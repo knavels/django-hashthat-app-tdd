@@ -2,7 +2,9 @@ from django.test import TestCase
 from selenium import webdriver
 from .form import HashForm
 from .models import Hash
+from django.core.exceptions import ValidationError
 import hashlib
+import time
 
 class FunctionalTestCase(TestCase):
 
@@ -20,6 +22,13 @@ class FunctionalTestCase(TestCase):
         text = self.browser.find_element_by_id('id_text')
         text.send_keys(self.text)
         self.browser.find_element_by_name('submit').click()
+        self.assertIn(self.hashed, self.browser.page_source)
+
+    def test_hash_ajax(self):
+        self.browser.get('http://localhost:8000')
+        text = self.browser.find_element_by_id('id_text')
+        text.send_keys(self.text)
+        time.sleep(5)   # wait to see actual ajax result
         self.assertIn(self.hashed, self.browser.page_source)
 
     def tearDown(self):
@@ -62,3 +71,11 @@ class UnitTestCase(TestCase):
 
         response = self.client.get('/hash/{}'.format(hash.hash))
         self.assertContains(response, hash.text)
+
+    def test_bad_data(self):
+        def bad_hash():
+            hash = Hash()
+            hash.hash = '2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824fwefwefwefwef'
+            hash.full_clean()
+
+        self.assertRaises(ValidationError, bad_hash)
